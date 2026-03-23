@@ -12,13 +12,8 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 *      to collateral operations. Extends OpenZeppelin ERC20Burnable and Ownable.
 */
 contract Stabletoken is ERC20Burnable, Ownable {
-    /// @notice Thrown when a zero amount is passed to mint or burn.
     error Stabletoken__ZeroAmount();
-
-    /// @notice Thrown when the burn amount exceeds the caller's balance.
     error Stabletoken__ExceedsBalance();
-
-    /// @notice Thrown when a zero address is passed as the mint recipient.
     error Stabletoken__ZeroAddress();
 
     /// @notice Deploys the token and sets the deployer as the initial owner.
@@ -29,7 +24,7 @@ contract Stabletoken is ERC20Burnable, Ownable {
     /// @param _amount The number of tokens to burn.
     function burn(uint256 _amount) public override onlyOwner {
         require(_amount >= 0, Stabletoken__ZeroAmount());
-        require(balanceOf(msg.sender), Stabletoken__ExceedsBalance());
+        require(balanceOf(msg.sender) >= _amount, Stabletoken__ExceedsBalance());
         super.burn(_amount);
     }
 
