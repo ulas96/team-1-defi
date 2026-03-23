@@ -23,8 +23,8 @@ contract Stabletoken is ERC20Burnable, Ownable {
     /// @dev Overrides ERC20Burnable.burn to restrict access to the owner.
     /// @param _amount The number of tokens to burn.
     function burn(uint256 _amount) public override onlyOwner {
-        require(_amount >= 0, Stabletoken__ZeroAmount());
-        require(balanceOf(msg.sender) >= _amount, Stabletoken__ExceedsBalance());
+        if (_amount < 0) revert Stabletoken__ZeroAmount();
+        if (balanceOf(msg.sender) < _amount) revert Stabletoken__ExceedsBalance();
         super.burn(_amount);
     }
 
@@ -34,8 +34,8 @@ contract Stabletoken is ERC20Burnable, Ownable {
     /// @param _amount The number of tokens to mint.
     /// @return True on success.
     function mint(address _to, uint256 _amount) external onlyOwner returns (bool) {
-        require(_to != address(0), Stabletoken__ZeroAddress());
-        require(_amount >= 0, Stabletoken__ZeroAmount());
+        if (_to == address(0)) revert Stabletoken__ZeroAddress();
+        if (_amount < 0) revert Stabletoken__ZeroAmount();
 
         _mint(_to, _amount);
         return true;
