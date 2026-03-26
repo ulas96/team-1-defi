@@ -3,7 +3,7 @@
 pragma solidity ^0.8.29;
 
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC0.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Stabletoken} from "./Stabletoken.sol";
 
 contract StabletokenEngine is ReentrancyGuard {
@@ -15,13 +15,13 @@ contract StabletokenEngine is ReentrancyGuard {
 
     //Modifiers
 
-    modifier moreThanZero(uin256 amount) {
+    modifier moreThanZero(uint256 amount) {
         if (amount == 0) revert StabletokenEngine__ZeroAmount();
         _;
     }
 
     modifier isCollateral(address token) {
-        if (priceFeed[token] == address(0)) revert StabletokenEngine__NotCollateral(token);
+        if (priceFeeds[token] == address(0)) revert StabletokenEngine__NotCollateral(token);
         _;
     }
 
@@ -47,17 +47,21 @@ contract StabletokenEngine is ReentrancyGuard {
 
     // Functions
 
-    constructor(address[] memory collateralTokens, address[] memory priceFeedAddresses, address stabletokenAddress) {
-        if (collateralTokens.length != priceFeedAddresses.length) {
+    constructor(
+        address[] memory collateralTokenAddresses,
+        address[] memory priceFeedAddresses,
+        address stabletokenAddress
+    ) {
+        if (collateralTokenAddresses.length != priceFeedAddresses.length) {
             revert StabletokenEngine__CollateralTokenAddressesAndPriceFeedsAddressesDontMatch();
         }
 
-        for (uint256 i = 0; collateralTokens.length; i++) {
-            priceFeeds[collateralTokens[i]] = priceFeedAddresses[i];
-            collateralTokens.push(collateralTokens[i]);
+        for (uint256 i = 0; i < collateralTokenAddresses.length; i++) {
+            priceFeeds[collateralTokenAddresses[i]] = priceFeedAddresses[i];
+            collateralTokens.push(collateralTokenAddresses[i]);
         }
 
-        sbt = stabletokenAddress;
+        sbt = Stabletoken(stabletokenAddress);
     }
 
     function deposit(address collateralToken, uint256 amount)
@@ -68,7 +72,7 @@ contract StabletokenEngine is ReentrancyGuard {
     {
         deposited[msg.sender][collateralToken] += amount;
         emit Deposit(msg.sender, collateralToken, amount);
-        bool success = IERC20(msg.sender, collateralToken, amount);
+        bool success = IERC20(collateralToken).transferFrom(msg.sender, address(this), amount);
         if (!success) revert StabletokenEngine__TransferFailed();
     }
 }
