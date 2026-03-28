@@ -84,9 +84,18 @@ contract StabletokenEngine is ReentrancyGuard {
         _burn(amount);
     }
 
-    function liquidate() public {}
+    function liquidate(address user) public {}
 
-    function withdraw() public {}
+    function withdraw(uint256 amount) public nonReentrant {
+        deposied[msg.sender] -= amount;
+        if (_checkHealthFactor(user) <= PRECISION) {
+            revert StabletokenEngine__BrokenHealthFactor();
+        }
+        bool success = sbt.transferFrom(address(this), msg.sender, amount);
+        if (!success) {
+            revert StabletokenEngine__TransferFailed();
+        }
+    }
 
     // Public View Functions
 
