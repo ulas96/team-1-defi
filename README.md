@@ -1,92 +1,138 @@
-## Foundry
+# SBT Stablecoin
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+A collateral-backed stablecoin system built on Solidity with Foundry. Users deposit ERC-20 collateral (e.g. WAVAX), and mint **SBT** stablecoins against it at a **200% collateralization ratio**, using a Chainlink price feed for real-time USD valuation. Under-collateralized positions can be liquidated by any participant.
 
-Foundry consists of:
+## How It Works
 
-- **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
-- **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
-- **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
-- **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+```
+User ──deposit(collateral)──► StabletokenEngine ──transferFrom──► holds collateral
+User ──mint(sbtAmount)──────► StabletokenEngine ──sbt.mint──────► SBT tokens to user
+User ──burn(sbtAmount)──────► StabletokenEngine ──sbt.burn──────► destroys SBT, reduces debt
+User ──withdraw(amount)─────► StabletokenEngine ──transfer──────► collateral back to user
+Anyone ─liquidate(user)─────► StabletokenEngine ──seize──────────► collateral to liquidator, debt cleared
+```
 
-## Documentation
+### Core Rules
 
-https://book.getfoundry.sh/
+- **200% collateralization**: you can only mint SBT up to 50% of your collateral's USD value
+- **Health factor**: `(collateralUSD * 50%) / mintedSBT` must stay >= 1.0 after every operation
+- **Liquidation**: if a position's health factor drops below 1.0, anyone can pay off the debt and claim all collateral
+- **Oracle safety**: the Chainlink price feed has a 3-hour staleness check — reverts if the price is stale
 
-## Usage
+## Contracts
+
+| Contract | Description |
+|---|---|
+| `src/Stabletoken.sol` | ERC-20 stablecoin token (SBT). Extends `ERC20Burnable` + `Ownable`. Only the owner (the engine) can mint/burn. |
+| `src/StabletokenEngine.sol` | Core engine. Manages deposits, withdrawals, minting, burning, and liquidations. Owns `Stabletoken`. Uses `ReentrancyGuard`. |
+| `src/library/Oracle.sol` | Library wrapping `AggregatorV3Interface.latestRoundData()` with staleness validation (3-hour timeout). |
+| `script/Deploy.s.sol` | Deployment script. Deploys both contracts, transfers SBT ownership to the engine. |
+
+## Getting Started
+
+### Prerequisites
+
+- [Foundry](https://book.getfoundry.sh/getting-started/installation) installed
+
+### Clone
+
+```bash
+git clone --recurse-submodules https://github.com/<org>/team-1-defi.git
+cd team-1-defi
+```
+
+If you already cloned without submodules:
+
+```bash
+git submodule update --init --recursive
+```
 
 ### Build
 
-```shell
-$ forge build
+```bash
+forge build
 ```
 
 ### Test
 
-```shell
-$ forge test
+```bash
+forge test -vvv
+```
+
+Run a specific test file or function:
+
+```bash
+forge test --match-path test/StabletokenEngineDepositTest.t.sol -vvv
+forge test --match-test testDepositSuccessTransfersTokens -vvv
 ```
 
 ### Format
 
-```shell
-$ forge fmt
+```bash
+forge fmt
 ```
 
-### Gas Snapshots
+### Gas Snapshot
 
-```shell
-$ forge snapshot
+```bash
+forge snapshot
 ```
 
-### Anvil
+## Deployment
 
-```shell
-$ anvil
+The deploy script reads two environment variables:
+
+| Variable | Description |
+|---|---|
+| `WAVAX_ADDRESS` | Address of the WAVAX (or other collateral) ERC-20 token |
+| `AVAX_PRICE_FEED` | Address of the Chainlink AVAX/USD price feed |
+
+```bash
+forge script script/Deploy.s.sol:Deploy \
+  --rpc-url <RPC_URL> \
+  --private-key <PRIVATE_KEY> \
+  --broadcast
 ```
 
-### Deploy
+The script deploys `Stabletoken`, then `StabletokenEngine`, and transfers SBT ownership to the engine.
 
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
+## Test Suite
 
-### Cast
+Tests use mock contracts (`MockERC20`, `MockPriceFeed`) to simulate collateral tokens and price feeds without external dependencies.
 
-```shell
-$ cast <subcommand>
-```
+| Test File | Covers |
+|---|---|
+| `StabletokenEngineDepositTest.t.sol` | Deposit: token transfer, events, accumulation, zero-amount revert, transfer failure, missing approval |
+| `StabletokenEngineMintTest.t.sol` | Mint: token issuance, health factor enforcement, accumulation, reverts for zero amount / no collateral / exceeding threshold |
+| `StabletokenEngineBurnTest.t.sol` | Burn: debt reduction, SBT destruction, health factor post-burn |
+| `StabletokenEngineWithdrawTest.t.sol` | Withdraw: token return, events, partial withdrawal, reverts for zero amount / broken health factor / failed transfer |
+| `StabletokenEngineLiquidateTest.t.sol` | Liquidate: collateral seizure, debt clearing, SBT burn, reverts when health factor is healthy or liquidator has no SBT |
 
-### Help
+## CI
 
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+GitHub Actions (`.github/workflows/test.yml`) runs on every push and PR:
 
-### Install OpenZeppelin for Foundry
+1. `forge fmt --check` — enforce formatting
+2. `forge build --sizes` — compile and report contract sizes
+3. `forge test -vvv` — run all tests
 
-```shell
-forge install OpenZeppelin/openzeppelin-contracts
-```
+## Dependencies
 
-Add remappings to the foundry.toml.
+Managed as git submodules in `lib/`:
+
+- **forge-std** — Foundry test utilities
+- **openzeppelin-contracts** — ERC-20, Ownable, ReentrancyGuard
+- **chainlink-brownie-contracts** — `AggregatorV3Interface` for price feeds
+
+Remappings in `foundry.toml`:
 
 ```toml
 remappings = [
     '@openzeppelin/contracts=lib/openzeppelin-contracts/contracts',
-]
-```
-
-### Install Chainlink for Foundry
-
-```shell
-forge install smartcontractkit/chainlink-brownie-contracts
-```
-
-```toml
-remappings = [
     '@chainlink/contracts/=lib/chainlink-brownie-contracts/contracts/',
 ]
 ```
+
+## License
+
+MIT
