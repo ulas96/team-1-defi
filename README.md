@@ -21,12 +21,12 @@ Anyone ─liquidate(user)─────► StabletokenEngine ──seize──�
 
 ## Contracts
 
-| Contract | Description |
-|---|---|
-| `src/Stabletoken.sol` | ERC-20 stablecoin token (SBT). Extends `ERC20Burnable` + `Ownable`. Only the owner (the engine) can mint/burn. |
+| Contract                    | Description                                                                                                                 |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `src/Stabletoken.sol`       | ERC-20 stablecoin token (SBT). Extends `ERC20Burnable` + `Ownable`. Only the owner (the engine) can mint/burn.              |
 | `src/StabletokenEngine.sol` | Core engine. Manages deposits, withdrawals, minting, burning, and liquidations. Owns `Stabletoken`. Uses `ReentrancyGuard`. |
-| `src/library/Oracle.sol` | Library wrapping `AggregatorV3Interface.latestRoundData()` with staleness validation (3-hour timeout). |
-| `script/Deploy.s.sol` | Deployment script. Deploys both contracts, transfers SBT ownership to the engine. |
+| `src/library/Oracle.sol`    | Library wrapping `AggregatorV3Interface.latestRoundData()` with staleness validation (3-hour timeout).                      |
+| `script/Deploy.s.sol`       | Deployment script. Deploys both contracts, transfers SBT ownership to the engine.                                           |
 
 ## Getting Started
 
@@ -37,7 +37,7 @@ Anyone ─liquidate(user)─────► StabletokenEngine ──seize──�
 ### Clone
 
 ```bash
-git clone --recurse-submodules https://github.com/<org>/team-1-defi.git
+git clone --recurse-submodules https://github.com/ulas96/team-1-defi.git
 cd team-1-defi
 ```
 
@@ -82,10 +82,10 @@ forge snapshot
 
 The deploy script reads two environment variables:
 
-| Variable | Description |
-|---|---|
-| `WAVAX_ADDRESS` | Address of the WAVAX (or other collateral) ERC-20 token |
-| `AVAX_PRICE_FEED` | Address of the Chainlink AVAX/USD price feed |
+| Variable          | Description                                             |
+| ----------------- | ------------------------------------------------------- |
+| `WAVAX_ADDRESS`   | Address of the WAVAX (or other collateral) ERC-20 token |
+| `AVAX_PRICE_FEED` | Address of the Chainlink AVAX/USD price feed            |
 
 ```bash
 forge script script/Deploy.s.sol:Deploy \
@@ -100,13 +100,13 @@ The script deploys `Stabletoken`, then `StabletokenEngine`, and transfers SBT ow
 
 Tests use mock contracts (`MockERC20`, `MockPriceFeed`) to simulate collateral tokens and price feeds without external dependencies.
 
-| Test File | Covers |
-|---|---|
-| `StabletokenEngineDepositTest.t.sol` | Deposit: token transfer, events, accumulation, zero-amount revert, transfer failure, missing approval |
-| `StabletokenEngineMintTest.t.sol` | Mint: token issuance, health factor enforcement, accumulation, reverts for zero amount / no collateral / exceeding threshold |
-| `StabletokenEngineBurnTest.t.sol` | Burn: debt reduction, SBT destruction, health factor post-burn |
-| `StabletokenEngineWithdrawTest.t.sol` | Withdraw: token return, events, partial withdrawal, reverts for zero amount / broken health factor / failed transfer |
-| `StabletokenEngineLiquidateTest.t.sol` | Liquidate: collateral seizure, debt clearing, SBT burn, reverts when health factor is healthy or liquidator has no SBT |
+| Test File                              | Covers                                                                                                                       |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `StabletokenEngineDepositTest.t.sol`   | Deposit: token transfer, events, accumulation, zero-amount revert, transfer failure, missing approval                        |
+| `StabletokenEngineMintTest.t.sol`      | Mint: token issuance, health factor enforcement, accumulation, reverts for zero amount / no collateral / exceeding threshold |
+| `StabletokenEngineBurnTest.t.sol`      | Burn: debt reduction, SBT destruction, health factor post-burn                                                               |
+| `StabletokenEngineWithdrawTest.t.sol`  | Withdraw: token return, events, partial withdrawal, reverts for zero amount / broken health factor / failed transfer         |
+| `StabletokenEngineLiquidateTest.t.sol` | Liquidate: collateral seizure, debt clearing, SBT burn, reverts when health factor is healthy or liquidator has no SBT       |
 
 ## CI
 
